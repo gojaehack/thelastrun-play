@@ -1,5 +1,157 @@
-<!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TheLastRun</title>
-<style>html,body{height:100%;margin:0;background:#101514;color:#cfd8d4;font:16px/1.6 system-ui,sans-serif;display:grid;place-items:center;text-align:center}</style>
-</head><body><div><h1 style="font-size:22px;margin:0 0 8px">TheLastRun</h1><p>테스트 빌드를 준비하는 중입니다.</p></div></body></html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <!-- 세로 고정 모바일. 핀치 줌과 확대를 막고 노치 영역까지 덮는다. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0b0d0f">
+  <meta name="format-detection" content="telephone=no">
+  <title>The Last Run</title>
+  <link rel="stylesheet" href="TemplateData/style.css">
+</head>
+<body>
+  <div id="stage">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+
+    <div id="loading">
+      <div id="loading-title">The Last Run</div>
+      <div id="progress-track"><div id="progress-fill"></div></div>
+      <div id="loading-note">로딩 중…</div>
+    </div>
+
+    <div id="error-box">
+      <div id="error-title">실행할 수 없습니다</div>
+      <div id="error-detail"></div>
+    </div>
+
+    <button id="fullscreen-btn" type="button" title="전체 화면">⛶</button>
+  </div>
+
+  <div id="rotate-overlay">
+    <div id="rotate-inner">
+      <div id="rotate-icon">📱</div>
+      <div>세로로 돌려 주세요</div>
+    </div>
+  </div>
+
+  <script src="Build/f2126205e4899a40659b1c30a28f465c.loader.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    var canvas = document.querySelector("#unity-canvas");
+    var stage = document.querySelector("#stage");
+    var loading = document.querySelector("#loading");
+    var progressFill = document.querySelector("#progress-fill");
+    var loadingNote = document.querySelector("#loading-note");
+    var errorBox = document.querySelector("#error-box");
+    var errorDetail = document.querySelector("#error-detail");
+    var fullscreenBtn = document.querySelector("#fullscreen-btn");
+
+    // ---- 9:16 을 유지하면서 보이는 영역 안에서 최대 크기 ----
+    var ASPECT = 9 / 16;
+
+    function layout() {
+      var vv = window.visualViewport;
+      var availW = (vv ? vv.width : window.innerWidth);
+      var availH = (vv ? vv.height : window.innerHeight);
+
+      var w = availW;
+      var h = w / ASPECT;
+      if (h > availH) {
+        h = availH;
+        w = h * ASPECT;
+      }
+      stage.style.width = Math.round(w) + "px";
+      stage.style.height = Math.round(h) + "px";
+    }
+
+    window.addEventListener("resize", layout);
+    window.addEventListener("orientationchange", function () { setTimeout(layout, 120); });
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", layout);
+    layout();
+
+    // ---- 스크롤 / 줌 / 당겨서 새로고침 / 길게 눌러 선택 차단 ----
+    // CSS(touch-action, overscroll-behavior, user-select)로 대부분 막고,
+    // 여기서는 CSS 로 막히지 않는 제스처만 취소한다.
+    document.addEventListener("touchmove", function (e) {
+      if (e.touches.length > 1) e.preventDefault();   // 핀치 줌
+    }, { passive: false });
+
+    document.addEventListener("gesturestart", function (e) { e.preventDefault(); }, { passive: false });
+    document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+    document.addEventListener("dblclick", function (e) { e.preventDefault(); }, { passive: false });
+
+    // iOS 의 더블탭 확대
+    var lastTouchEnd = 0;
+    document.addEventListener("touchend", function (e) {
+      var now = Date.now();
+      if (now - lastTouchEnd <= 320) e.preventDefault();
+      lastTouchEnd = now;
+    }, { passive: false });
+
+    // ---- 전체 화면 (지원하는 브라우저에서만 보인다) ----
+    var canFullscreen = !!(document.documentElement.requestFullscreen ||
+                           document.documentElement.webkitRequestFullscreen);
+    if (!canFullscreen) {
+      fullscreenBtn.style.display = "none";   // iOS Safari 는 전체 화면 API 가 없다
+    } else {
+      fullscreenBtn.addEventListener("click", function () {
+        var el = document.documentElement;
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+          (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        } else {
+          (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+        }
+      });
+    }
+
+    // ---- Unity 로드 ----
+    function showError(message) {
+      loading.style.display = "none";
+      errorBox.style.display = "flex";
+      errorDetail.textContent = String(message);
+    }
+
+    var config = {
+      arguments: [],
+      dataUrl: "Build/9c84f0f58acf340f19f2a66706d4c7f5.data.unityweb",
+      frameworkUrl: "Build/ef2790a3f0e1621baa6026e7f532f21c.framework.js.unityweb",
+      codeUrl: "Build/2f2b3ec033bcd5acfc6af31294801b84.wasm.unityweb",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "TheLastRun",
+      productName: "The Last Run",
+      productVersion: "1.0",
+      // 고해상도 폰에서 픽셀 수가 폭발해 프레임이 떨어진다. 2배로 제한한다.
+      devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+      showBanner: function (msg, type) {
+        // Unity 기본 배너("모바일 미지원" 경고 등)를 화면에 띄우지 않는다.
+        if (type === "error") showError(msg);
+        else console.warn("[unity]", msg);
+      }
+    };
+
+    try {
+      createUnityInstance(canvas, config, function (progress) {
+        progressFill.style.width = Math.round(progress * 100) + "%";
+        if (progress >= 1) loadingNote.textContent = "시작하는 중…";
+      }).then(function (instance) {
+        window.unityInstance = instance;
+        loading.style.display = "none";
+        canvas.focus();
+        // WebGL 은 첫 입력 전 포커스가 잡히지 않는 브라우저가 있다.
+        stage.addEventListener("pointerdown", function () { canvas.focus(); });
+      }).catch(function (message) {
+        showError(message);
+      });
+    } catch (e) {
+      showError(e && e.message ? e.message : e);
+    }
+  })();
+  </script>
+</body>
+</html>
