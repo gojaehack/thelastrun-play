@@ -38,7 +38,7 @@
     </div>
   </div>
 
-  <script src="Build/d95d9730c65b1414a079c030ce2b0f36.loader.js"></script>
+  <script src="Build/d1a090fccda4f19ac57df08a2c42d2a1.loader.js"></script>
   <script>
   (function () {
     "use strict";
@@ -52,8 +52,10 @@
     var errorDetail = document.querySelector("#error-detail");
     var fullscreenBtn = document.querySelector("#fullscreen-btn");
 
-    // ---- 9:16 을 유지하면서 보이는 영역 안에서 최대 크기 ----
-    var ASPECT = 9 / 16;
+    // ---- T120: 보이는 영역을 채운다. 비율은 9:22(긴 폰) ~ 10:16(태블릿) 사이만 허용하고 그 밖은 여백 ----
+    // 게임 쪽(캔버스 Expand · 카메라 가로 시야 고정 · 세이프 에어리어)이 이 범위의 어떤 비율에도 맞춘다.
+    var MIN_ASPECT = 9 / 22;    // 폭/높이 — 이보다 길면 위아래 여백
+    var MAX_ASPECT = 10 / 16;   // 이보다 넓으면(데스크톱 가로 창) 좌우 여백
 
     function layout() {
       var vv = window.visualViewport;
@@ -61,11 +63,9 @@
       var availH = (vv ? vv.height : window.innerHeight);
 
       var w = availW;
-      var h = w / ASPECT;
-      if (h > availH) {
-        h = availH;
-        w = h * ASPECT;
-      }
+      var h = availH;
+      if (w / h > MAX_ASPECT) w = h * MAX_ASPECT;
+      if (w / h < MIN_ASPECT) h = w / MIN_ASPECT;
       stage.style.width = Math.round(w) + "px";
       stage.style.height = Math.round(h) + "px";
     }
@@ -119,9 +119,9 @@
 
     var config = {
       arguments: [],
-      dataUrl: "Build/83ba0c5e7939a4dc29d62b5567fbd882.data.unityweb",
-      frameworkUrl: "Build/11ea4c0b416a1be600c0d2dcc8fd2d4b.framework.js.unityweb",
-      codeUrl: "Build/3015a40fdfea4d2eb90f6646ab28ab7b.wasm.unityweb",
+      dataUrl: "Build/ffb996cb9f83a730601c467e1c7e42bb.data.unityweb",
+      frameworkUrl: "Build/d5cb9d1b170bdc1f8c31fa80c69ee387.framework.js.unityweb",
+      codeUrl: "Build/1c6a59d00fcffa61f02a76686ee81ade.wasm.unityweb",
       streamingAssetsUrl: "StreamingAssets",
       companyName: "rnmsoft",
       productName: "The Last Run",
